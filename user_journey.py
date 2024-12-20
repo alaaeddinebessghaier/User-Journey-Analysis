@@ -44,3 +44,23 @@ def remove_page_duplicates(df,column='user_journey'):
 result = remove_page_duplicates(df)
 print(result)
 
+
+### group the sessions of the user 
+def group_by(df,sessions,count_from,group_column='user_id',target_column='user_journey'):
+    data_sorted = df.sort_values(by=['user_id', 'session_id'], ascending=True)
+    journey = data_sorted.groupby(group_column)[target_column].apply(list)
+
+    if sessions == 'all':
+        return journey
+    else:
+        if count_from == 'first':
+            journey= journey.apply(lambda x: x[:sessions])
+        elif count_from == 'last':
+            journey= journey.apply(lambda x: x[-sessions:])
+        return journey.reset_index(name='grouped_journey')
+    
+sz = group_by(df, 3, 'last')
+print(sz)
+print(len(sz))
+print(df['user_id'].nunique())
+
