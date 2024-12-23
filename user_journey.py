@@ -2,65 +2,110 @@ import pandas as pd
 import matplotlib.pyplot as plt 
 import seaborn as sns
 
-df = pd.read_csv('C:\\Users\\bessghaier\\365 project\\project-files-user-journey-analysis-in-python\\user_journey_raw.csv')
-print(df.head())
-print(df.describe(include='all'))
-print(df.info())
-""" print(df.isnull().values.sum()) 
-print(df['user_id'].duplicated().sum())
-print(df['session_id'].duplicated().sum()) """
 
-### top user_journey used by user
-journey_counts = df['user_journey'].value_counts()
-most_duplicated_journey = journey_counts.sort_values(ascending=False,axis=0)
-""" print(most_duplicated_journey.head(10))"""
+user_data = pd.read_csv('C:\\Users\\bessghaier\\365 project\\project-files-user-journey-analysis-in-python\\user_journey_raw.csv')
+""" print(user_data.info)
+print(user_data.describe())
+print(user_data.dtypes) """
 
 
-### most subscription_type by user 
-user_session = df.groupby('subscription_type')['user_id'].count()
-""" print(user_session) 
- """
-### user have more session 
-user = df['user_id'].value_counts()
-most_duplicated_user = user.sort_values(ascending=False)
-""" print(most_duplicated_user)
- """
-
-### remove the duplicated pages
-def remove_page_duplicates(df,column='user_journey'):
-    cleaned_journeys = []
-    for index,row in df.iterrows():
-        journey = row[column]
-        pages = journey.split('-')
-        clean_pages=[pages[0]]
-        for i in range(1,len(pages)):
-            if pages[i] != pages[i-1]:
-                clean_pages.append(pages[i])
-        clean_pages = '-'.join(clean_pages)
-        cleaned_journeys.append(clean_pages)
-    df_cleaned = df.copy()
-    df_cleaned[column] = cleaned_journeys
-    return df_cleaned
-result = remove_page_duplicates(df)
-print(result)
+def remove_page_duplicates(data, target_column='user_journey'):
+    df = data.copy()
+    all_journey = list(df[target_column])
+    all_journey = [journey.split("-") for journey in all_journey]
+    for i in range(len(all_journey)):
+        cleaned_journey = [all_journey[i][0]]
+        for j in range(1,len(all_journey[i])):
+            if all_journey[i][j-1] != all_journey[i][j]:
+                cleaned_journey.append(all_journey[i][j])
+        all_journey[i] = "-".join(cleaned_journey)
+        df[target_column] = all_journey
+    return df 
 
 
-### group the sessions of the user 
-def group_by(df,sessions,count_from,group_column='user_id',target_column='user_journey'):
-    data_sorted = df.sort_values(by=['user_id', 'session_id'], ascending=True)
-    journey = data_sorted.groupby(group_column)[target_column].apply(list)
 
-    if sessions == 'all':
-        return journey
-    else:
-        if count_from == 'first':
-            journey= journey.apply(lambda x: x[:sessions])
-        elif count_from == 'last':
-            journey= journey.apply(lambda x: x[-sessions:])
-        return journey.reset_index(name='grouped_journey')
+def group_by(data, group_column = 'user_id', target_column = 'user_journey', sessions = 'all', count_from = 'last'):
     
-sz = group_by(df, 3, 'last')
-print(sz)
-print(len(sz))
-print(df['user_id'].nunique())
+    
+
+    
+    df = pd.DataFrame(columns = data.columns)
+    
+    
+    if sessions == "all":
+        start = 0
+        end = None
+    
+    elif sessions == "all_except_last":
+        start = 0
+        end = -1
+    
+    elif count_from == "last":
+        start = - sessions
+        end = None
+    
+    elif count_from == "first":
+        start = 0
+        end = sessions
+    
+    
+    groups = set(data[group_column])
+    
+    for group_value in groups:
+        
+        group_mask = list(data[group_column] == group_value)
+        group_table = data[group_mask] 
+        
+        user_journey = "-".join(list(group_table[target_column])[start:end])
+        
+        new_index = len(df)
+        df.loc[new_index] = group_table.iloc[0].copy() 
+        df.loc[new_index, target_column] = user_journey
+
+    
+    df.sort_values(by=[group_column], ignore_index = True, inplace = True)
+    df.reset_index(drop = True, inplace = True)
+    
+    
+    
+    return df
+
+def remove_pages(data, pages=[], target_column='user_journey'):
+
+    
+    df = data.copy()  
+    journes = list(df[target_column])  
+    pages = set(pages)  
+    if len(pages) == 0:
+        return df 
+    
+    journes = [journey.split('-') for journey in journes]  
+    journes = [[page for page in journey if page not in pages] for journey in journes]  
+    journes = ["-".join(i) for i in journes]  
+    
+    df[target_column] = journes  
+    return df  
+
+
+
+
+
+
+
+
+
+clean_data = user_data.copy().drop("session_id", axis=1)
+clean_data = group_by(clean_data)
+print(type(clean_data))  # This should print <class 'pandas.core.frame.DataFrame'>
+
+clean_data = remove_pages(clean_data, [])
+print(type(clean_data))  # This should print <class 'pandas.core.frame.DataFrame'>
+
+clean_data = remove_page_duplicates(clean_data)
+print(clean_data.head())
+
+
+
+
+
 
